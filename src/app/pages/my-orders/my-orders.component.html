@@ -1,0 +1,57 @@
+<div class="min-h-screen bg-gray-100 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6">My Orders</h1>
+
+            @if (isLoading) {
+                <div class="text-center py-8">
+                    <p class="text-gray-500">Loading orders...</p>
+                </div>
+            } @else if (orders.length === 0) {
+                <div class="text-center py-8">
+                    <p class="text-gray-500 mb-4">You haven't placed any orders yet</p>
+                    <a routerLink="/home" 
+                       class="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        Start Shopping
+                    </a>
+                </div>
+            } @else {
+                <div class="space-y-6">
+                    @for (order of orders; track order.id) {
+                        <div class="border rounded-lg p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="font-medium">Order #{{order.id}}</h3>
+                                    <p class="text-sm text-gray-500">Status: {{order.status}}</p>
+                                </div>
+                                <span class="text-lg font-bold">${{order.totalAmount | number:'1.2-2'}}</span>
+                            </div>
+
+                            <div class="space-y-2">
+                                @for (item of order.items; track item.productId) {
+                                    <div class="flex justify-between items-center text-sm">
+                                        <div class="flex items-center space-x-2">
+                                            <div>
+                                                <p class="font-medium">{{item.title}}</p>
+                                                <p class="text-gray-500">Quantity: {{item.quantity}}</p>
+                                            </div>
+                                        </div>
+                                        <p>${{item.price | number:'1.2-2'}}</p>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mt-4 pt-4 border-t">
+                                <div class="text-sm text-gray-500">
+                                    <p>Shipping Address:</p>
+                                    <p>{{order.shippingDetails.address}}</p>
+                                    <p>{{order.shippingDetails.city}}, {{order.shippingDetails.country}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

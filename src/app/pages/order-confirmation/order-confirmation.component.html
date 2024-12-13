@@ -1,0 +1,50 @@
+<div class="min-h-screen bg-gray-100 py-12">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white rounded-xl shadow-lg p-8 text-center">
+      <div class="mb-8">
+        <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+      </div>
+
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
+      <p class="text-lg text-gray-600 mb-8">Thank you for your purchase.</p>
+
+      <div *ngIf="order" class="text-left mb-8">
+        <div class="border-t border-b py-4 mb-4">
+          <p class="text-sm text-gray-500 mb-1">Order ID</p>
+          <p class="font-medium">{{order.id}}</p>
+        </div>
+
+        <div class="space-y-4">
+          <div *ngFor="let item of order.items" class="flex justify-between">
+            <div>
+              <p class="font-medium">{{item.title}}</p>
+              <p class="text-sm text-gray-500">Quantity: {{item.quantity}}</p>
+            </div>
+            <p class="font-medium">${{item.price | number:'1.2-2'}}</p>
+          </div>
+        </div>
+
+        <div class="border-t mt-6 pt-4">
+          <div class="flex justify-between text-lg font-bold">
+            <span>Total</span>
+            <span>${{order.totalAmount | number:'1.2-2'}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <button 
+          (click)="continueShopping()"
+          class="bg-indigo-600 text-white px-6 py-3 rounded-lg text-lg font-medium
+                 hover:bg-indigo-700 transition-colors duration-200"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

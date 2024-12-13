@@ -1,0 +1,140 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl my-6 p-8 md:p-16">
+      <div class="max-w-3xl mx-auto text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">Discover Amazing Products</h1>
+        <p class="text-lg md:text-xl mb-8 opacity-90">Shop the latest trends and must-have items</p>
+        
+        <div class="max-w-2xl mx-auto flex flex-col sm:flex-row gap-4">
+          <input 
+            type="text" 
+            [(ngModel)]="searchQuery" 
+            (keyup.enter)="searchProducts()"
+            placeholder="Search products..."
+            class="flex-1 px-6 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
+          >
+          <button 
+            (click)="searchProducts()"
+            class="px-8 py-3 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+    </section>
+  
+    <!-- Filters Section -->
+    <section class="flex flex-col md:flex-row justify-between items-center gap-6 my-8">
+      <div class="flex flex-wrap gap-3">
+        <button 
+          [ngClass]="{'bg-indigo-600 text-white': selectedCategory === 'all',
+                     'bg-white text-gray-700 hover:bg-gray-50': selectedCategory !== 'all'}"
+          (click)="filterByCategory('all')"
+          class="px-4 py-2 rounded-lg border border-gray-200 transition-colors duration-200"
+        >
+          All
+        </button>
+        <button 
+          *ngFor="let category of categories"
+          [ngClass]="{'bg-indigo-600 text-white': selectedCategory === category,
+                     'bg-white text-gray-700 hover:bg-gray-50': selectedCategory !== category}"
+          (click)="filterByCategory(category)"
+          class="px-4 py-2 rounded-lg border border-gray-200 transition-colors duration-200"
+        >
+          {{category}}
+        </button>
+      </div>
+  
+      <select 
+        [(ngModel)]="sortOption" 
+        (change)="sortProducts(sortOption)"
+        class="px-4 py-2 rounded-lg border border-gray-200 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <option value="featured">Featured</option>
+        <option value="price-low">Price: Low to High</option>
+        <option value="price-high">Price: High to Low</option>
+        <option value="rating">Best Rating</option>
+      </select>
+    </section>
+  
+    <!-- Loading Spinner -->
+    <div *ngIf="isLoading" class="fixed inset-0 flex items-center justify-center bg-black/20">
+      <div class="w-12 h-12 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin"></div>
+    </div>
+  
+    <!-- Products Grid -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-8">
+      <div 
+        *ngFor="let product of filteredProducts.length > 0 ? filteredProducts : products"
+        (click)="navigateToDetail(product.id)"
+        class="bg-white rounded-xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-2 cursor-pointer"
+        [ngClass]="{'opacity-70': !product.inStock}"
+      >
+        <!-- Product Image -->
+        <div class="relative aspect-square">
+          <img 
+            [src]="product.image" 
+            [alt]="product.title"
+            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          >
+          <!-- Badges -->
+          <div class="absolute top-4 left-4 flex gap-2">
+            <span 
+              *ngIf="product.discount"
+              class="bg-red-500 text-white px-2 py-1 rounded-md text-sm font-medium"
+            >
+              -{{product.discount}}%
+            </span>
+            <span 
+              *ngIf="!product.inStock"
+              class="bg-gray-600 text-white px-2 py-1 rounded-md text-sm font-medium"
+            >
+              Out of Stock
+            </span>
+          </div>
+        </div>
+  
+        <!-- Product Info -->
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">{{product.title}}</h3>
+          <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{product.description}}</p>
+  
+          <!-- Price -->
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-xl font-semibold text-indigo-600">
+              ${{calculateDiscountedPrice(product) | number:'1.2-2'}}
+            </span>
+            <span 
+              *ngIf="product.discount"
+              class="text-sm text-gray-400 line-through"
+            >
+              ${{product.price | number:'1.2-2'}}
+            </span>
+          </div>
+  
+          <!-- Rating -->
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-yellow-400">{{getRatingStars(product.rating)}}</span>
+            <span class="text-sm text-gray-600">{{product.rating}}</span>
+          </div>
+  
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
+            <button
+              (click)="addToCart($event, product)"
+              [disabled]="!product.inStock"
+              class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {{product.inStock ? 'Add to Cart' : 'Out of Stock'}}
+            </button>
+            <button 
+              (click)="addToWishlist($event, product)"
+              class="p-2 text-red-500 border border-gray-200 rounded-lg hover:bg-red-50 transition-colors duration-200"
+            >
+              ♥
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
