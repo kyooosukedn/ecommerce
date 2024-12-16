@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { CartService } from '../../services/cart.service';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { User } from '../../services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -58,7 +60,7 @@ import { Router } from '@angular/router';
 })
 export class HeaderComponent {
   cartItemCount: number = 0;
-  user$ = this.authService.user$;
+  user$ : Observable<User | null>;
 
   constructor(
     private cartService: CartService,
@@ -68,6 +70,8 @@ export class HeaderComponent {
     this.cartService.cartItems$.subscribe(items => {
       this.cartItemCount = items.length;
     });
+
+    this.user$ = this.authService.getCurrentUser();
 
   }
 
