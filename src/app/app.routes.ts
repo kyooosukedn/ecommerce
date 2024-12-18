@@ -8,6 +8,7 @@ import { CheckoutComponent } from './pages/checkout/checkout.component';
 import { OrderConfirmationComponent } from './pages/order-confirmation/order-confirmation.component';
 import { LoginComponent } from './pages/login/login.component';
 import { SignupComponent } from './pages/signup/signup.component';
+import { WishlistComponent } from './pages/wishlist/wishlist.component';
 import { inject } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { map } from 'rxjs/operators';
@@ -49,6 +50,10 @@ export const routes: Routes = [
     {
         path: 'product/:id',
         component: ProductDetailComponent
+    },
+    {
+        path: 'wishlist',
+        component: WishlistComponent
     },
     {
         path: 'cart',

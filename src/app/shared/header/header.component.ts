@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { User } from '../../services/auth.service';
+import { WishlistService } from '../../services/wishlist.service';
 
 @Component({
   selector: 'app-header',
@@ -32,6 +33,15 @@ import { User } from '../../services/auth.service';
               <span *ngIf="cartItemCount > 0" 
                     class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {{cartItemCount}}
+              </span>
+            </a>
+            <a routerLink="/wishlist" 
+               routerLinkActive="text-indigo-600" 
+               class="text-gray-700 hover:text-indigo-600 transition-colors relative">
+              Favourites
+              <span *ngIf="wishlistItems > 0" 
+                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {{wishlistItems}}
               </span>
             </a>
             <ng-container *ngIf="user$ | async as user; else loginButton">
@@ -61,10 +71,12 @@ import { User } from '../../services/auth.service';
 export class HeaderComponent {
   cartItemCount: number = 0;
   user$ : Observable<User | null>;
+  wishlistItems: number = 0;
 
   constructor(
     private cartService: CartService,
     private authService: AuthService,
+    private wishlistService: WishlistService,
     private router: Router
   ) {
     this.cartService.cartItems$.subscribe(items => {
@@ -72,6 +84,10 @@ export class HeaderComponent {
     });
 
     this.user$ = this.authService.getCurrentUser();
+
+    this.wishlistService.wishlist$.subscribe(wishlist => {
+      this.wishlistItems = wishlist.items.length;
+    });
 
   }
 

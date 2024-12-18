@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
+import { WishlistService } from '../../services/wishlist.service';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
@@ -12,6 +13,7 @@ import { ToastrService } from 'ngx-toastr';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './products.component.html',
+  styleUrls: ['./products.component.scss']
 })
 export class ProductsComponent implements OnInit {
   products: Product[] = [];
@@ -25,6 +27,7 @@ export class ProductsComponent implements OnInit {
   constructor(
     private productService: ProductService, 
     private cartService: CartService,
+    private wishlistService: WishlistService,
     private toastr: ToastrService,
     private router: Router
   ) {}
@@ -108,8 +111,21 @@ export class ProductsComponent implements OnInit {
     }
   }
 
-  addToWishlist(event: Event, product: Product): void {
+  isInWishlist(productId: number): boolean {
+    return this.wishlistService.isInWishlist(productId.toString());
+  }
+
+  toggleWishlist(event: Event, product: Product): void {
+    event.preventDefault();
     event.stopPropagation();
+    
+    if (this.isInWishlist(product.id)) {
+      this.wishlistService.removeFromWishlist(product.id.toString());
+      this.toastr.success('Removed from wishlist');
+    } else {
+      this.wishlistService.addToWishlist(product.id.toString());
+      this.toastr.success('Added to wishlist');
+    }
   }
 
   getRatingStars(rating: number): string {
