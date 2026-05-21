@@ -1,134 +1,140 @@
 import { Component, OnInit } from '@angular/core';
-import { Product } from '../../interfaces/product.interface';
-import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
+import { Product } from '../../models/product.model';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
 export class ProductsComponent implements OnInit {
   products: Product[] = [];
   filteredProducts: Product[] = [];
+  loading = true;
+  error: string | null = null;
+  selectedCategory: string | null = null;
   categories: string[] = [];
-  selectedCategory: string = 'all';
-  searchQuery: string = '';
-  sortOption: string = 'featured';
-  isLoading: boolean = true;
+  searchQuery = '';
+  sortOption = 'featured';
 
   constructor(
-    private productService: ProductService, 
+    private productService: ProductService,
     private cartService: CartService,
-    private wishlistService: WishlistService,
-    private toastr: ToastrService,
-    private router: Router
+    public wishlistService: WishlistService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
-    this.fetchProducts();
+    // Subscribe to loading state
+    this.productService.loading$.subscribe(
+      isLoading => this.loading = isLoading
+    );
 
-    this.categories = ['Electronics', 'Fashion', 'Home', 'Books', 'Sports'];
-    this.isLoading = false;
+    this.loadProducts();
+    this.loadCategories();
   }
 
-  fetchProducts(): void {
-    this.productService.getProducts().subscribe({
-      next: (products) => {
+  loadProducts(): void {
+    this.error = null;
+    this.productService.getProducts(this.selectedCategory || undefined).subscribe({
+      next: (products: Product[]) => {
         this.products = products;
-        this.filteredProducts = products;
-        this.categories = Array.from(new Set(products.map(product => product.category)));
-        this.isLoading = false;
+        this.applyFilters();
       },
-      error: (error) => {
-        this.toastr.error('Failed to load products');
-        this.isLoading = false;
+      error: (error: Error) => {
+        this.error = 'Failed to load products';
+        console.error('Error loading products:', error);
       }
     });
   }
-  
-  filterByCategory(category: string): void {
+
+  private loadCategories(): void {
+    this.productService.getCategories().subscribe({
+      next: (categories: string[]) => {
+        this.categories = categories;
+      },
+      error: (error: Error) => {
+        console.error('Error loading categories:', error);
+      }
+    });
+  }
+
+  calculateDiscountedPrice(price: number, discount: number | undefined): number {
+    if (!discount) return price;
+    return price * (1 - discount / 100);
+  }
+
+  getStarRating(rating: { rate: number; count: number }): string {
+    const fullStars = Math.floor(rating.rate);
+    const hasHalfStar = rating.rate % 1 >= 0.5;
+    return '★'.repeat(fullStars) + (hasHalfStar ? '½' : '') + '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
+  }
+
+  handleCategoryFilter(category: string | null): void {
     this.selectedCategory = category;
-    this.filteredProducts = category === 'all' ? this.products : this.products.filter(product => product.category === category);
+    this.loadProducts();
   }
 
   searchProducts(): void {
-    const query = this.searchQuery.toLowerCase();
-    this.filteredProducts = this.products.filter(product => product.title?.toLowerCase().includes(query));
-    console.log(this.products);
-    console.log(this.filteredProducts);
+    this.applyFilters();
   }
 
-  sortProducts(option: string): void {
-    this.sortOption = option;
-    switch (option) {
+  private applyFilters(): void {
+    let filtered = [...this.products];
+
+    // Apply search filter
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
+      filtered = filtered.filter(product => 
+        product.title.toLowerCase().includes(query) ||
+        product.description.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sorting
+    switch (this.sortOption) {
       case 'price-low':
-        this.products.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => this.calculateDiscountedPrice(a.price, a.discount) - this.calculateDiscountedPrice(b.price, b.discount));
         break;
       case 'price-high':
-        this.products.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => this.calculateDiscountedPrice(b.price, b.discount) - this.calculateDiscountedPrice(a.price, a.discount));
         break;
-      case 'rating':
-        this.products.sort((a, b) => b.rating - a.rating);
+      case 'name':
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
         break;
       default:
-        break;
-    }
-  }
-
-  calculateDiscountedPrice(product: Product): number {
-    if (product.discount) {
-      return product.price * (1 - product.discount / 100);
-    }
-    return product.price;
-  }
-
-  navigateToDetail(productId: number): void {
-    this.router.navigate(['/product', productId]);
-  }
-
-  addToCart(event: Event, product: Product): void {
-    event.stopPropagation();
-    
-    if (!product.inStock) {
-      this.toastr.warning('This product is out of stock');
-      return;
+        filtered.sort((a, b) => b.rating.rate - a.rating.rate);
     }
 
-    try {
-      this.cartService.addToCart(product);
-      this.toastr.success('Product added to cart successfully');
-    } catch (error) {
-      this.toastr.error('Failed to add product to cart');
-      console.error('Error adding product to cart:', error);
-    }
+    this.filteredProducts = filtered;
   }
 
-  isInWishlist(productId: number): boolean {
-    return this.wishlistService.isInWishlist(productId.toString());
+  sortProducts(): void {
+    this.applyFilters();
   }
 
-  toggleWishlist(event: Event, product: Product): void {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (this.isInWishlist(product.id)) {
-      this.wishlistService.removeFromWishlist(product.id.toString());
-      this.toastr.success('Removed from wishlist');
+  handleAddToCart(product: Product): void {
+    this.cartService.addToCart(product);
+    this.toastr.success('Added to cart!');
+  }
+
+  handleWishlistToggle(product: Product): void {
+    const productId = product.id.toString();
+    if (this.wishlistService.isInWishlist(productId)) {
+      this.wishlistService.removeFromWishlist(productId);
+      this.toastr.info('Removed from wishlist');
     } else {
-      this.wishlistService.addToWishlist(product.id.toString());
+      this.wishlistService.addToWishlist(productId);
       this.toastr.success('Added to wishlist');
     }
-  }
-
-  getRatingStars(rating: number): string {
-    return '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
   }
 }

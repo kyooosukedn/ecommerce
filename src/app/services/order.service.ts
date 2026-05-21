@@ -1,63 +1,75 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { delay } from 'rxjs/operators';
-import { Order, ShippingDetails } from '../interfaces/order.interface';
-import { CartService } from './cart.service';
-import { Product } from '../interfaces/product.interface';
+import { BehaviorSubject } from 'rxjs';
+import { Product } from '../models/product.model';
+
+export interface Order {
+  id: string;
+  items: (Product & { quantity: number })[];
+  total: number;
+  date: Date;
+  status: 'pending' | 'completed' | 'cancelled';
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+}
 
 @Injectable({
-    providedIn: 'root'
+  providedIn: 'root'
 })
 export class OrderService {
-    private orders: Order[] = [];
+  private orders = new BehaviorSubject<Order[]>([]);
+  orders$ = this.orders.asObservable();
 
-    constructor(private cartService: CartService) {}
-
-    createOrder(shippingDetails: ShippingDetails): Observable<Order> {
-        const cartItems = this.cartService.getCartItems();
-        
-        const order: Order = {
-            id: this.generateOrderId(),
-            items: cartItems.map(item => ({
-                productId: item.id,
-                quantity: item.quantity || 1,
-                price: item.price,
-                title: item.title
-            })),
-            shippingDetails,
-            totalAmount: this.calculateTotal(cartItems),
-            status: 'pending',
-            createdAt: new Date()
-        };
-
-        // Simulate API call
-        return of(order).pipe(
-            delay(1000) 
-        );
+  constructor() {
+    // Load orders from localStorage if exists
+    const savedOrders = localStorage.getItem('orders');
+    if (savedOrders) {
+      this.orders.next(JSON.parse(savedOrders));
     }
+  }
 
-    private calculateTotal(items: Product[]): number {
-        return items.reduce((total, item) => {
-            const quantity = item.quantity || 1;
-            const price = item.discount ? 
-                item.price * (1 - item.discount / 100) : 
-                item.price;
-            return total + (price * quantity);
-        }, 0);
-    }
+  createOrder(items: (Product & { quantity: number })[], address: Order['address']): Order {
+    const order: Order = {
+      id: this.generateOrderId(),
+      items: [...items],
+      total: this.calculateTotal(items),
+      date: new Date(),
+      status: 'pending',
+      address
+    };
 
-    private generateOrderId(): string {
-        return 'ORD-' + Math.random().toString(36).substring(2, 9).toUpperCase();
-    }
+    const currentOrders = this.orders.value;
+    this.orders.next([...currentOrders, order]);
+    this.saveToLocalStorage();
 
-    getOrders(): Observable<Order[]> {
-        return of(this.orders);
-    }
+    return order;
+  }
 
-    confirmOrder(order: Order): Observable<Order> {
-        order.status = 'confirmed';
-        this.orders.push(order);
-        this.cartService.clearCart(); 
-        return of(order).pipe(delay(500));
-    }
+  getOrders(): Order[] {
+    return this.orders.value;
+  }
+
+  updateOrderStatus(orderId: string, status: Order['status']): void {
+    const currentOrders = this.orders.value;
+    const updatedOrders = currentOrders.map(order => 
+      order.id === orderId ? { ...order, status } : order
+    );
+    this.orders.next(updatedOrders);
+    this.saveToLocalStorage();
+  }
+
+  private calculateTotal(items: (Product & { quantity: number })[]): number {
+    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  }
+
+  private generateOrderId(): string {
+    return 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  }
+
+  private saveToLocalStorage(): void {
+    localStorage.setItem('orders', JSON.stringify(this.orders.value));
+  }
 }

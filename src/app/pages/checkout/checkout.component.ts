@@ -2,9 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { CartService } from '../../services/cart.service';
-import { OrderService } from '../../services/order.service';
-import { Product } from '../../interfaces/product.interface';
+import { CartService, CartItem } from '../../services/cart.service';
+import { OrderService, Order } from '../../services/order.service';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
@@ -14,7 +13,7 @@ import { ToastrService } from 'ngx-toastr';
   templateUrl: './checkout.component.html'
 })
 export class CheckoutComponent implements OnInit {
-  cartItems: Product[] = [];
+  cartItems: CartItem[] = [];
   checkoutForm: FormGroup;
   isSubmitting = false;
 
@@ -50,11 +49,10 @@ export class CheckoutComponent implements OnInit {
 
   calculateTotal(): number {
     return this.cartItems.reduce((total, item) => {
-      const quantity = item.quantity || 1;
-      const price = item.discount ? 
+      const price = item.discount !== undefined ? 
         item.price * (1 - item.discount / 100) : 
         item.price;
-      return total + (price * quantity);
+      return total + (price * item.quantity);
     }, 0);
   }
 
@@ -72,29 +70,19 @@ export class CheckoutComponent implements OnInit {
 
     this.isSubmitting = true;
     
-    // Pass shipping details directly to createOrder
-    this.orderService.createOrder(this.checkoutForm.value).subscribe({
-      next: (createdOrder) => {
-        this.orderService.confirmOrder(createdOrder).subscribe({
-          next: (confirmedOrder) => {
-            this.cartService.clearCart();
-            this.toastr.success('Order placed successfully!');
-            this.router.navigate(['/order-confirmation'], { 
-              state: { order: confirmedOrder } 
-            });
-          },
-          error: (error) => {
-            this.isSubmitting = false;
-            this.toastr.error('Failed to confirm order');
-            console.error('Error confirming order:', error);
-          }
-        });
-      },
-      error: (error) => {
-        this.isSubmitting = false;
-        this.toastr.error('Failed to create order');
-        console.error('Error creating order:', error);
-      }
+    const formValue = this.checkoutForm.value;
+    const address = {
+      street: formValue.address,
+      city: formValue.city,
+      state: formValue.state,
+      zip: formValue.zipCode
+    };
+
+    const order = this.orderService.createOrder(this.cartItems, address);
+    this.cartService.clearCart();
+    this.toastr.success('Order placed successfully!');
+    this.router.navigate(['/order-confirmation'], { 
+      state: { order } 
     });
   }
 }

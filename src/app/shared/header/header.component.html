@@ -1,7 +1,37 @@
-<header class="bg-cyan-400 text-white p-4 flex justify-between items-center">
-    <h1 class="text-lg font-bold">E-commerce</h1>
-    <nav>
-      <a routerLink="/home" class="px-4">Home</a>
-      <a routerLink="/my-orders" class="px-4">My Orders</a>
+<header class="bg-cyan-400 text-white p-4">
+  <div class="container mx-auto flex justify-between items-center">
+    <a routerLink="/home" class="text-2xl font-bold">E-commerce</a>
+    
+    <nav class="flex items-center space-x-6">
+      <a routerLink="/home" class="hover:text-gray-200">Home</a>
+      
+      <ng-container *ngIf="user$ | async as user">
+        <a routerLink="/my-orders" class="hover:text-gray-200">My Orders</a>
+      </ng-container>
+      
+      <a routerLink="/wishlist" class="hover:text-gray-200 relative">
+        Wishlist
+        <span *ngIf="wishlistItems > 0" 
+          class="absolute -top-2 -right-2 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          {{wishlistItems}}
+        </span>
+      </a>
+      
+      <a routerLink="/cart" class="hover:text-gray-200 relative">
+        Cart
+        <span *ngIf="cartItemCount > 0" 
+          class="absolute -top-2 -right-2 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          {{cartItemCount}}
+        </span>
+      </a>
+      
+      <ng-container *ngIf="user$ | async as user; else loginButton">
+        <button (click)="logout()" class="hover:text-gray-200">Logout</button>
+      </ng-container>
+      
+      <ng-template #loginButton>
+        <a routerLink="/login" class="hover:text-gray-200">Login</a>
+      </ng-template>
     </nav>
-  </header>
+  </div>
+</header>

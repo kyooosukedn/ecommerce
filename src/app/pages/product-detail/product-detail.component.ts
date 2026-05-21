@@ -1,100 +1,86 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
-import { Product } from '../../interfaces/product.interface';
+import { Product } from '../../models/product.model';
 import { ToastrService } from 'ngx-toastr';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule],
-  templateUrl: './product-detail.component.html'
+  imports: [CommonModule, RouterModule],
+  templateUrl: './product-detail.component.html',
 })
 export class ProductDetailComponent implements OnInit {
   product: Product | null = null;
-  isLoading: boolean = true;
+  loading = true;
   error: string | null = null;
-  isInWishlist: boolean = false;
+  quantity = 1;
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
     private productService: ProductService,
     private cartService: CartService,
-    private wishlistService: WishlistService,
+    public wishlistService: WishlistService,
     private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
     const productId = this.route.snapshot.paramMap.get('id');
     if (productId) {
-      const numericId = parseInt(productId, 10);
-      this.productService.getProductById(numericId).subscribe({
-        next: (product) => {
-          this.product = product;
-          this.isLoading = false;
-          this.isInWishlist = this.wishlistService.isInWishlist(productId);
-        },
-        error: (error) => {
-          this.error = 'Failed to load product';
-          this.isLoading = false;
-          this.toastr.error('Failed to load product');
-        }
-      });
-    } else {
-      this.error = 'Invalid product ID';
-      this.isLoading = false;
+      this.loadProduct(parseInt(productId, 10));
     }
   }
 
-  calculateDiscountedPrice(): number {
-    if (!this.product) return 0;
-    if (this.product.discount) {
-      return this.product.price * (1 - this.product.discount / 100);
-    }
-    return this.product.price;
+  private loadProduct(id: number): void {
+    this.loading = true;
+    this.productService.getProduct(id).subscribe({
+      next: (product: Product) => {
+        this.product = product;
+        this.loading = false;
+      },
+      error: (error: Error) => {
+        this.error = 'Failed to load product';
+        this.loading = false;
+        console.error('Error loading product:', error);
+      }
+    });
   }
 
-  getRatingStars(): string {
-    if (!this.product) return '';
-    return '★'.repeat(Math.floor(this.product.rating)) + '☆'.repeat(5 - Math.floor(this.product.rating));
+  calculateDiscountedPrice(price: number, discount: number | undefined): number {
+    if (!discount) return price;
+    return price * (1 - discount / 100);
+  }
+
+  getStarRating(rating: { rate: number; count: number }): string {
+    const fullStars = Math.floor(rating.rate);
+    const hasHalfStar = rating.rate % 1 >= 0.5;
+    return '★'.repeat(fullStars) + (hasHalfStar ? '½' : '') + '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
   }
 
   addToCart(): void {
-    if (!this.product) return;
-    
-    if (!this.product.inStock) {
-      this.toastr.warning('This product is out of stock');
-      return;
-    }
-
-    try {
-      this.cartService.addToCart(this.product);
-      this.toastr.success('Product added to cart successfully');
-    } catch (error) {
-      this.toastr.error('Failed to add product to cart');
-      console.error('Error adding product to cart:', error);
+    if (this.product) {
+      this.cartService.addToCart({ ...this.product, quantity: this.quantity });
+      this.toastr.success('Added to cart!');
     }
   }
 
-  toggleWishlist(): void {
-    if (!this.product) return;
-
-    if (this.isInWishlist) {
-      this.wishlistService.removeFromWishlist(this.product.id.toString());
-      this.isInWishlist = false;
-      this.toastr.success('Removed from wishlist');
-    } else {
+  addToWishlist(): void {
+    if (this.product) {
       this.wishlistService.addToWishlist(this.product.id.toString());
-      this.isInWishlist = true;
-      this.toastr.success('Added to wishlist');
+      this.toastr.success('Added to wishlist!');
     }
   }
 
-  goBack(): void {
-    this.router.navigate(['/home']);
+  incrementQuantity(): void {
+    this.quantity++;
+  }
+
+  decrementQuantity(): void {
+    if (this.quantity > 1) {
+      this.quantity--;
+    }
   }
 }

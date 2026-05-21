@@ -9,7 +9,7 @@
           <input 
             type="text" 
             [(ngModel)]="searchQuery" 
-            (keyup.enter)="searchProducts()"
+            (input)="searchProducts()"
             placeholder="Search products..."
             class="flex-1 px-6 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
           >
@@ -27,19 +27,19 @@
     <section class="flex flex-col md:flex-row justify-between items-center gap-6 my-8">
       <div class="flex flex-wrap gap-3">
         <button 
-          [ngClass]="{'bg-indigo-600 text-white': selectedCategory === 'all',
-                     'bg-white text-gray-700 hover:bg-gray-50': selectedCategory !== 'all'}"
-          (click)="filterByCategory('all')"
+          [ngClass]="{'bg-indigo-600 text-white': selectedCategory === null,
+                     'bg-white text-gray-700 hover:bg-gray-50': selectedCategory !== null}"
+          (click)="handleCategoryFilter(null)"
           class="px-4 py-2 rounded-lg border border-gray-200 transition-colors duration-200"
         >
           All
         </button>
         <button 
           *ngFor="let category of categories"
-          [ngClass]="{'bg-indigo-600 text-white': selectedCategory === category,
-                     'bg-white text-gray-700 hover:bg-gray-50': selectedCategory !== category}"
-          (click)="filterByCategory(category)"
-          class="px-4 py-2 rounded-lg border border-gray-200 transition-colors duration-200"
+          (click)="handleCategoryFilter(category)"
+          [class.bg-purple-600]="selectedCategory === category"
+          [class.text-white]="selectedCategory === category"
+          class="px-4 py-2 rounded-full border border-purple-600 hover:bg-purple-600 hover:text-white transition-colors"
         >
           {{category}}
         </button>
@@ -47,7 +47,7 @@
   
       <select 
         [(ngModel)]="sortOption" 
-        (change)="sortProducts(sortOption)"
+        (change)="sortProducts()"
         class="px-4 py-2 rounded-lg border border-gray-200 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <option value="featured">Featured</option>
@@ -58,7 +58,7 @@
     </section>
   
     <!-- Loading Spinner -->
-    <div *ngIf="isLoading" class="fixed inset-0 flex items-center justify-center bg-black/20">
+    <div *ngIf="loading" class="fixed inset-0 flex items-center justify-center bg-black/20">
       <div class="w-12 h-12 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin"></div>
     </div>
   
@@ -66,9 +66,8 @@
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 my-8">
       <div 
         *ngFor="let product of filteredProducts.length > 0 ? filteredProducts : products"
-        (click)="navigateToDetail(product.id)"
+        [routerLink]="['/product', product.id]"
         class="bg-white rounded-xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-2 cursor-pointer"
-        [ngClass]="{'opacity-70': !product.inStock}"
         data-testid="product-card"
       >
         <!-- Product Image -->
@@ -79,13 +78,13 @@
             class="w-full h-48 object-contain mb-4"
           >
           <button 
-            (click)="toggleWishlist($event, product)"
+            (click)="handleWishlistToggle(product)"
             data-testid="wishlist-button"
-            class="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors"
-            [class.text-red-500]="isInWishlist(product.id)"
+            class="absolute top-4 right-4 p-2 rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" [class.fill-current]="isInWishlist(product.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            <svg [class.text-red-500]="wishlistService.isInWishlist(product.id.toString())" 
+                 class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
           </button>
         </div>
@@ -98,7 +97,7 @@
           <!-- Price -->
           <div class="flex items-center gap-2 mb-4">
             <span class="text-xl font-semibold text-indigo-600">
-              ${{calculateDiscountedPrice(product) | number:'1.2-2'}}
+              ${{calculateDiscountedPrice(product.price, product.discount) | number:'1.2-2'}}
             </span>
             <span 
               *ngIf="product.discount"
@@ -110,21 +109,24 @@
   
           <!-- Rating -->
           <div class="flex items-center gap-2 mb-4">
-            <span class="text-yellow-400">{{getRatingStars(product.rating)}}</span>
+            <span class="text-yellow-400">{{getStarRating(product.rating)}}</span>
             <span class="text-sm text-gray-600">{{product.rating}}</span>
           </div>
   
           <!-- Action Buttons -->
           <div class="flex gap-3">
             <button
-              (click)="addToCart($event, product)"
-              [disabled]="!product.inStock"
-              class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              (click)="handleAddToCart(product)"
+              data-testid="add-to-cart-button"
+              class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors duration-200"
             >
-              {{product.inStock ? 'Add to Cart' : 'Out of Stock'}}
-          </button>
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
     </section>
+    <button (click)="handleCategoryFilter(null)" class="mt-4 text-purple-600 hover:text-purple-700">
+      View all products
+    </button>
   </div>

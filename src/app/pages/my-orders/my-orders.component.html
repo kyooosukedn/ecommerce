@@ -24,11 +24,11 @@
                                     <h3 class="font-medium">Order #{{order.id}}</h3>
                                     <p class="text-sm text-gray-500">Status: {{order.status}}</p>
                                 </div>
-                                <span class="text-lg font-bold">${{order.totalAmount | number:'1.2-2'}}</span>
+                                <span class="text-lg font-bold">${{order.total | number:'1.2-2'}}</span>
                             </div>
 
                             <div class="space-y-2">
-                                @for (item of order.items; track item.productId) {
+                                @for (item of order.items; track item.id) {
                                     <div class="flex justify-between items-center text-sm">
                                         <div class="flex items-center space-x-2">
                                             <div>
@@ -44,8 +44,8 @@
                             <div class="mt-4 pt-4 border-t">
                                 <div class="text-sm text-gray-500">
                                     <p>Shipping Address:</p>
-                                    <p>{{order.shippingDetails.address}}</p>
-                                    <p>{{order.shippingDetails.city}}, {{order.shippingDetails.country}}</p>
+                                    <p>{{order.address.street}}</p>
+                                    <p>{{order.address.city}}, {{order.address.state}} {{order.address.zip}}</p>
                                 </div>
                             </div>
                         </div>

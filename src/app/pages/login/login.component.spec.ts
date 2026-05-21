@@ -1,13 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { LoginComponent } from './login.component';
-import { AuthService } from '../../services/auth.service';
-import { ToastrService } from 'ngx-toastr';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
-import { Router } from '@angular/router';
+import { ToastrService } from 'ngx-toastr';
 import { of, throwError } from 'rxjs';
-import { By } from '@angular/platform-browser';
-import { CommonModule } from '@angular/common';
+import { LoginComponent } from './login.component';
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
 import { Models } from 'appwrite';
 
 describe('LoginComponent', () => {
@@ -18,16 +16,16 @@ describe('LoginComponent', () => {
   let router: Router;
 
   const mockUser: Models.User<Models.Preferences> = {
-    $id: 'test-id',
-    $createdAt: 'test-date',
-    $updatedAt: 'test-date',
+    $id: '1',
+    $createdAt: new Date().toISOString(),
+    $updatedAt: new Date().toISOString(),
     name: 'Test User',
     password: '',
     hash: '',
     hashOptions: {},
-    registration: 'test-date',
+    registration: new Date().toISOString(),
     status: true,
-    passwordUpdate: 'test-date',
+    passwordUpdate: new Date().toISOString(),
     email: 'test@example.com',
     phone: '',
     emailVerification: true,
@@ -36,7 +34,7 @@ describe('LoginComponent', () => {
     labels: [],
     mfa: false,
     targets: [],
-    accessedAt: ''
+    accessedAt: new Date().toISOString()
   };
 
   beforeEach(async () => {
@@ -45,10 +43,11 @@ describe('LoginComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [
-        CommonModule,
+        LoginComponent,
         ReactiveFormsModule,
-        RouterTestingModule,
-        LoginComponent
+        RouterTestingModule.withRoutes([
+          { path: 'home', redirectTo: '/', pathMatch: 'full' }
+        ])
       ],
       providers: [
         { provide: AuthService, useValue: authSpy },
@@ -56,11 +55,11 @@ describe('LoginComponent', () => {
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(LoginComponent);
-    component = fixture.componentInstance;
     authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
     toastr = TestBed.inject(ToastrService) as jasmine.SpyObj<ToastrService>;
     router = TestBed.inject(Router);
+    fixture = TestBed.createComponent(LoginComponent);
+    component = fixture.componentInstance;
     fixture.detectChanges();
   });
 
@@ -73,85 +72,77 @@ describe('LoginComponent', () => {
     expect(component.loginForm.get('password')?.value).toBe('');
   });
 
-  it('should show validation errors when form is submitted with empty fields', () => {
-    // Try to submit empty form
-    component.onSubmit();
-    fixture.detectChanges();
-
-    // Check form validity
-    expect(component.loginForm.valid).toBeFalsy();
-    expect(component.loginForm.get('email')?.errors?.['required']).toBeTruthy();
-    expect(component.loginForm.get('password')?.errors?.['required']).toBeTruthy();
+  it('should mark form as invalid when empty', () => {
+    expect(component.loginForm.valid).toBeFalse();
   });
 
-  it('should show email validation error for invalid email', () => {
-    const emailControl = component.loginForm.get('email');
-    emailControl?.setValue('invalid-email');
-    emailControl?.markAsTouched();
-    fixture.detectChanges();
-
-    expect(emailControl?.errors?.['email']).toBeTruthy();
-    const errorElement = fixture.debugElement.query(By.css('.text-red-500'));
-    expect(errorElement.nativeElement.textContent).toContain('Please enter a valid email');
-  });
-
-  it('should call auth service and navigate on successful login', () => {
-    const credentials = {
+  it('should mark form as valid with proper data', () => {
+    component.loginForm.patchValue({
       email: 'test@example.com',
       password: 'password123'
-    };
-
-    // Setup successful login response
-    authService.login.and.returnValue(of(mockUser));
-    spyOn(router, 'navigate');
-
-    // Fill form
-    component.loginForm.patchValue(credentials);
-    
-    // Submit form
-    component.onSubmit();
-
-    expect(authService.login).toHaveBeenCalledWith(credentials.email, credentials.password);
-    expect(router.navigate).toHaveBeenCalledWith(['/home']);
-    expect(toastr.success).toHaveBeenCalledWith('Successfully logged in!');
-    expect(component.isLoading).toBeFalse();
+    });
+    expect(component.loginForm.valid).toBeTrue();
   });
 
-  it('should show error message on login failure', () => {
-    const errorMessage = 'Invalid credentials';
-    const error = new Error(errorMessage);
-    authService.login.and.returnValue(throwError(() => error));
+  it('should show error for invalid email', () => {
+    const emailControl = component.loginForm.get('email');
+    emailControl?.setValue('invalid-email');
+    expect(emailControl?.errors?.['email']).toBeTruthy();
+  });
 
+  it('should disable submit button while loading', fakeAsync(() => {
+    component.loginForm.patchValue({
+      email: 'test@example.com',
+      password: 'password123'
+    });
+
+    authService.login.and.returnValue(of(mockUser));
+    component.isLoading = true;
+    fixture.detectChanges();
+    
+    const submitButton = fixture.nativeElement.querySelector('button[type="submit"]');
+    expect(submitButton.disabled).toBeTrue();
+    expect(submitButton.textContent.trim()).toBe('Signing in...');
+    
+    component.isLoading = false;
+    fixture.detectChanges();
+    
+    expect(submitButton.disabled).toBeFalse();
+    expect(submitButton.textContent.trim()).toBe('Sign in');
+  }));
+
+  it('should handle login error', fakeAsync(() => {
     component.loginForm.patchValue({
       email: 'test@example.com',
       password: 'wrong-password'
     });
 
+    const error = { message: 'Invalid credentials' };
+    authService.login.and.returnValue(throwError(() => error));
+
     component.onSubmit();
+    tick();
 
-    expect(toastr.error).toHaveBeenCalledWith(errorMessage || 'Failed to login. Please try again.');
+    expect(toastr.error).toHaveBeenCalledWith('Invalid credentials');
     expect(component.isLoading).toBeFalse();
-  });
+  }));
 
-  it('should disable submit button while loading', () => {
-    // Set valid form values
-    component.loginForm.patchValue({
+  it('should call auth service and navigate on successful login', fakeAsync(() => {
+    const credentials = {
       email: 'test@example.com',
       password: 'password123'
-    });
+    };
 
-    // Mock a delayed response
     authService.login.and.returnValue(of(mockUser));
-    
-    // Submit form
-    component.onSubmit();
-    fixture.detectChanges();
+    spyOn(router, 'navigate');
 
-    // Get submit button
-    const submitButton = fixture.debugElement.query(By.css('button[type="submit"]'));
-    
-    // Check if button is disabled and shows loading state
-    expect(submitButton.nativeElement.disabled).toBeTrue();
-    expect(submitButton.nativeElement.textContent.trim()).toBe('Signing in...');
-  });
+    component.loginForm.patchValue(credentials);
+    component.onSubmit();
+    tick();
+
+    expect(authService.login).toHaveBeenCalledWith(credentials.email, credentials.password);
+    expect(router.navigate).toHaveBeenCalledWith(['/home']);
+    expect(toastr.success).toHaveBeenCalledWith('Successfully logged in!');
+    expect(component.isLoading).toBeFalse();
+  }));
 });

@@ -1,14 +1,16 @@
 export interface Product {
-    quantity: number;
-    title: any;
     id: number;
-    description: string;
+    title: string;
     price: number;
-    image:string;
+    description: string;
     category: string;
-    rating:number;
-    inStock: boolean;
-    discount?:number;
+    image: string;
+    rating: {
+        rate: number;
+        count: number;
+    };
+    inStock?: boolean;
+    quantity?: number;
 }
 
 export interface ProductFilter {

@@ -1,111 +1,100 @@
 <div class="min-h-screen bg-gray-100 py-12">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Loading State -->
-    <div *ngIf="isLoading" class="flex justify-center items-center h-64">
+    <div *ngIf="loading" class="fixed inset-0 bg-black/20 flex items-center justify-center">
       <div class="w-12 h-12 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin"></div>
     </div>
 
     <!-- Error State -->
-    <div *ngIf="error" class="text-center py-12">
-      <p class="text-red-600 text-lg">{{error}}</p>
-      <button 
-        (click)="goBack()" 
-        class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-      >
-        Go Back
-      </button>
+    <div *ngIf="error" class="container mx-auto px-4 py-8">
+      <div class="text-center">
+        <p class="text-red-600 mb-4">{{error}}</p>
+        <button 
+          routerLink="/products"
+          class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+          Back to Products
+        </button>
+      </div>
     </div>
 
     <!-- Product Details -->
-    <div *ngIf="product && !isLoading" class="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div class="grid grid-cols-1 md:grid-cols-2">
-        <!-- Product Image Section -->
-        <div class="relative aspect-square bg-gray-200">
-          <img 
-            [src]="product.image" 
-            [alt]="product.title"
-            class="w-full h-full object-contain p-4"
-          >
-          <div class="absolute top-4 left-4 flex gap-2">
-            <span 
-              *ngIf="product.discount"
-              class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium"
+    <div *ngIf="product && !loading && !error" class="container mx-auto px-4 py-8">
+      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="md:flex">
+          <!-- Product Image -->
+          <div class="md:w-1/2 p-8">
+            <img 
+              [src]="product.image" 
+              [alt]="product.title"
+              class="w-full h-96 object-contain"
             >
-              -{{product.discount}}%
-            </span>
-            <span 
-              *ngIf="!product.inStock"
-              class="bg-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium"
-            >
-              Out of Stock
-            </span>
-          </div>
-        </div>
-
-        <!-- Product Info Section -->
-        <div class="p-8 space-y-6">
-          <button 
-            (click)="goBack()" 
-            class="text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            ← Back to Products
-          </button>
-
-          <h1 class="text-3xl font-bold text-gray-900 mt-4">{{product.title}}</h1>
-          
-          <div class="flex items-center gap-4">
-            <span class="text-3xl font-bold text-indigo-600">
-              ${{calculateDiscountedPrice() | number:'1.2-2'}}
-            </span>
-            <span 
-              *ngIf="product.discount"
-              class="text-xl text-gray-400 line-through"
-            >
-              ${{product.price | number:'1.2-2'}}
-            </span>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span class="text-yellow-400 text-xl">{{getRatingStars()}}</span>
-            <span class="text-gray-600">({{product.rating}} / 5)</span>
-          </div>
-
-          <p class="text-gray-600 text-lg leading-relaxed">{{product.description}}</p>
-
-          <div class="space-y-4 pt-6">
-            <p class="text-sm text-gray-500">
-              Category: <span class="text-gray-900">{{product.category}}</span>
-            </p>
-            <p class="text-sm text-gray-500">
-              Availability: 
-              <span [class]="product.inStock ? 'text-green-600' : 'text-red-600'">
-                {{product.inStock ? 'In Stock' : 'Out of Stock'}}
+          <!-- Product Info -->
+          <div class="md:w-1/2 p-8">
+            <h1 class="text-3xl font-bold mb-4">{{product.title}}</h1>
+            
+            <!-- Price -->
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-3xl font-bold text-indigo-600">
+                ${{calculateDiscountedPrice(product.price, product.discount) | number:'1.2-2'}}
               </span>
-            </p>
-          </div>
+              <span *ngIf="product.discount" class="text-xl text-gray-500 line-through">
+                ${{product.price | number:'1.2-2'}}
+              </span>
+              <span *ngIf="product.discount" class="px-2 py-1 bg-red-500 text-white text-sm rounded-full">
+                -{{product.discount}}%
+              </span>
+            </div>
 
-          <div class="pt-6">
-            <div class="flex gap-4 mt-8">
+            <!-- Rating -->
+            <div class="flex items-center gap-2 mb-6">
+              <span class="text-yellow-400 text-xl">{{getStarRating(product.rating)}}</span>
+              <span class="text-gray-600">({{product.rating.count}} reviews)</span>
+            </div>
+
+            <!-- Description -->
+            <p class="text-gray-600 mb-8">{{product.description}}</p>
+
+            <!-- Quantity -->
+            <div class="flex items-center gap-4 mb-6">
+              <span class="text-gray-700">Quantity:</span>
+              <div class="flex items-center border border-gray-300 rounded-lg">
+                <button 
+                  (click)="decrementQuantity()"
+                  class="px-3 py-1 text-gray-600 hover:bg-gray-100">
+                  -
+                </button>
+                <span class="px-4 py-1 border-x border-gray-300">{{quantity}}</span>
+                <button 
+                  (click)="incrementQuantity()"
+                  class="px-3 py-1 text-gray-600 hover:bg-gray-100">
+                  +
+                </button>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-4">
               <button 
-                (click)="addToCart()" 
-                [disabled]="!product.inStock"
-                class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
+                (click)="addToCart()"
+                class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
                 Add to Cart
               </button>
               <button 
-                (click)="toggleWishlist()"
-                class="px-6 py-3 rounded-lg border-2 transition-colors"
-                [class.border-red-500]="isInWishlist"
-                [class.text-red-500]="isInWishlist"
-                [class.border-gray-300]="!isInWishlist"
-                [class.hover:border-red-500]="!isInWishlist"
-                [class.hover:text-red-500]="!isInWishlist"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" [class.fill-current]="isInWishlist" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
+                (click)="addToWishlist()"
+                [class.text-red-500]="wishlistService.isInWishlist(product.id.toString())"
+                class="px-4 text-gray-600 hover:text-red-500 transition-colors">
+                ♥
               </button>
+            </div>
+
+            <!-- Category -->
+            <div class="mt-8">
+              <span class="text-gray-600">Category:</span>
+              <span class="ml-2 px-3 py-1 bg-gray-100 rounded-full text-gray-700">
+                {{product.category}}
+              </span>
             </div>
           </div>
         </div>
